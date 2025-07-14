@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/stockholm-weather/static/css/main.f855e6bc.css",
-    "main.js": "/stockholm-weather/static/js/main.e8ec5962.js",
+    "main.js": "/stockholm-weather/static/js/main.d274e899.js",
     "static/js/453.9901a0a3.chunk.js": "/stockholm-weather/static/js/453.9901a0a3.chunk.js",
     "index.html": "/stockholm-weather/index.html",
     "main.f855e6bc.css.map": "/stockholm-weather/static/css/main.f855e6bc.css.map",
-    "main.e8ec5962.js.map": "/stockholm-weather/static/js/main.e8ec5962.js.map",
+    "main.d274e899.js.map": "/stockholm-weather/static/js/main.d274e899.js.map",
     "453.9901a0a3.chunk.js.map": "/stockholm-weather/static/js/453.9901a0a3.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.f855e6bc.css",
-    "static/js/main.e8ec5962.js"
+    "static/js/main.d274e899.js"
   ]
 }
