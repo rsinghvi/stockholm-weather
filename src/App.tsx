@@ -4,11 +4,38 @@ import './App.css';
 interface WeatherData {
   temperature: number;
   weathercode: number;
+  windspeed: number;
+  humidity: number | null;
   time: string;
 }
 
-const WEATHER_API =
-  'https://api.open-meteo.com/v1/forecast?latitude=59.3293&longitude=18.0686&current_weather=true&timezone=Europe%2FStockholm';
+interface City {
+  name: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+}
+
+const cities: City[] = [
+  {
+    name: 'Stockholm',
+    latitude: 59.3293,
+    longitude: 18.0686,
+    timezone: 'Europe/Stockholm',
+  },
+  {
+    name: 'Riga',
+    latitude: 56.9496,
+    longitude: 24.1052,
+    timezone: 'Europe/Riga',
+  },
+  {
+    name: 'Vilnius',
+    latitude: 54.6872,
+    longitude: 25.2797,
+    timezone: 'Europe/Vilnius',
+  },
+];
 
 const weatherDescriptions: { [key: number]: string } = {
   0: 'Clear sky',
@@ -42,7 +69,7 @@ const weatherDescriptions: { [key: number]: string } = {
 };
 
 function App() {
-  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [weather, setWeather] = useState<{ [city: string]: WeatherData | null }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,14 +77,33 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(WEATHER_API);
-      const data = await res.json();
-      const w = data.current_weather;
-      setWeather({
-        temperature: w.temperature,
-        weathercode: w.weathercode,
-        time: w.time,
-      });
+      const results: { [city: string]: WeatherData | null } = {};
+      await Promise.all(
+        cities.map(async (city) => {
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.latitude}&longitude=${city.longitude}&current_weather=true&hourly=relative_humidity_2m&timezone=${encodeURIComponent(city.timezone)}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          const w = data.current_weather;
+          // Find humidity for the current hour if available
+          let humidity: number | null = null;
+          let idx = data.hourly.time.findIndex((t: string) => t === w.time);
+          if (idx === -1) {
+            // If exact match not found, find the closest previous hour
+            idx = data.hourly.time.findIndex((t: string) => w.time.startsWith(t.slice(0, 13)));
+          }
+          if (idx !== -1) {
+            humidity = data.hourly.relative_humidity_2m[idx];
+          }
+          results[city.name] = {
+            temperature: w.temperature,
+            weathercode: w.weathercode,
+            windspeed: w.windspeed,
+            humidity,
+            time: w.time,
+          };
+        })
+      );
+      setWeather(results);
     } catch (e) {
       setError('Failed to fetch weather data.');
     } finally {
@@ -74,16 +120,33 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Stockholm Weather</h1>
+        <h1>ECD Weather forecast</h1>
         {loading && <p>Loading...</p>}
         {error && <p style={{ color: 'red' }}>{error}</p>}
-        {weather && !loading && !error && (
-          <div>
-            <p style={{ fontSize: '2rem' }}>{weather.temperature}°C</p>
-            <p>{weatherDescriptions[weather.weathercode] || 'Unknown'}</p>
-            <p style={{ fontSize: '0.9rem' }}>Last updated: {new Date(weather.time).toLocaleTimeString('sv-SE')}</p>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {cities.map((city) => {
+            const w = weather[city.name];
+            return (
+              <div key={city.name} style={{ background: '#333', borderRadius: 16, padding: 24, minWidth: 220, boxShadow: '0 2px 8px #0004', margin: 8 }}>
+                <h2>{city.name}</h2>
+                {w ? (
+                  <>
+                    <p style={{ fontSize: '2rem', margin: 0 }}>{w.temperature}°C</p>
+                    <p style={{ margin: 0 }}>{weatherDescriptions[w.weathercode] || 'Unknown'}</p>
+                    <p style={{ margin: 0 }}>💨 Wind: {w.windspeed} km/h</p>
+                    <p style={{ margin: 0 }}>💧 Humidity: {w.humidity !== null ? w.humidity + '%' : 'N/A'}</p>
+                    <p style={{ fontSize: '0.9rem', marginTop: 8 }}>Last updated: {new Date(w.time).toLocaleTimeString('sv-SE')}</p>
+                  </>
+                ) : (
+                  <p>Loading...</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p style={{ marginTop: 32, fontSize: '1rem', color: '#aaa' }}>
+          Data from <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#61dafb' }}>Open-Meteo</a>. Updates every 15 minutes.
+        </p>
       </header>
     </div>
   );
